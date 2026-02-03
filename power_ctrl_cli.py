@@ -42,17 +42,18 @@ def main():
     address = args.address
     if not address:
         # 自动搜索
-        resources = list_resources()
+        resources = list_resources(verbose=False)
         if not resources:
             print("错误: 未找到任何 VISA 设备。请检查连接。")
             sys.exit(1)
         address = resources[0]
-        print(f"自动选择设备: {address}")
+        # print(f"自动选择设备: {address}")
     else:
-        print(f"使用指定设备: {address}")
+        # print(f"使用指定设备: {address}")
+        pass
     
     # 2. 初始化控制器
-    ps = PowerSupplyController(address)
+    ps = PowerSupplyController(address, verbose=False)
     
     try:
         ps.connect()

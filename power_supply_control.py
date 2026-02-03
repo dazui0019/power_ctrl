@@ -2,23 +2,27 @@ import pyvisa
 import time
 
 class PowerSupplyController:
-    def __init__(self, resource_address):
+    def __init__(self, resource_address, verbose=True):
         """
         初始化电源控制器
         :param resource_address: VISA 资源地址 (例如: 'USB0::0xXXXX::0xXXXX::SERIAL::INSTR')
+        :param verbose: 是否打印连接信息
         """
         self.rm = pyvisa.ResourceManager()
         self.address = resource_address
+        self.verbose = verbose
         self.instrument = None
 
     def connect(self):
         """连接到电源"""
         try:
             self.instrument = self.rm.open_resource(self.address)
-            print(f"成功连接到设备: {self.address}")
+            if self.verbose:
+                print(f"成功连接到设备: {self.address}")
             # 查询设备标识
             idn = self.instrument.query('*IDN?')
-            print(f"设备标识: {idn.strip()}")
+            if self.verbose:
+                print(f"设备标识: {idn.strip()}")
         except Exception as e:
             print(f"连接失败: {e}")
             raise
@@ -76,12 +80,12 @@ class PowerSupplyController:
         """断开连接"""
         if self.instrument:
             self.instrument.close()
-            print("连接已断开")
 
-def list_resources():
+def list_resources(verbose=True):
     """列出所有可用的 VISA 资源"""
     rm = pyvisa.ResourceManager()
-    print("扫描到的 VISA 资源:")
+    if verbose:
+        print("扫描到的 VISA 资源:")
     resources = rm.list_resources()
     
     formatted_resources = []
@@ -122,7 +126,8 @@ def list_resources():
                     # 如果转换失败(非数字)，保持原样
                     pass
         
-        print(f" - {display_res}{extra_info}")
+        if verbose:
+            print(f" - {display_res}{extra_info}")
         formatted_resources.append(display_res)
         
     return formatted_resources
