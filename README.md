@@ -48,8 +48,12 @@
 ### 1. `power_supply_control.py`
 核心控制库及交互式工具。包含 `PowerSupplyController` 类，封装了常用的 SCPI 指令（VOLT, CURR, OUTP, MEAS 等）。
 
+**功能特点：**
+*   **自动设备识别**：增强了 `list_resources` 功能，能够解析 USB ID 并显示常见仪器厂商（如 ITECH, Yokogawa, Keysight, Tektronix, Rigol 等）。
+*   **智能连接**：默认优先搜索并连接 **ITECH IT6722** 电源 (VID: 0x2EC7, PID: 0x6700)。若未找到特定设备，将列出所有可用资源。
+
 **直接运行模式（交互式）：**
-直接运行该脚本将进入交互式命令行界面，方便手动调试。
+直接运行该脚本将尝试连接目标电源并进入交互式命令行界面，方便手动调试。
 ```bash
 uv run power_supply_control.py
 ```
@@ -92,5 +96,7 @@ uv run power_supply_control.py
     ```
 
 ## ⚠️ 注意事项
-1. 脚本默认会自动连接扫描到的**第一个** VISA 资源。如果连接了多个设备，请使用 `list_resources()` 查看地址，并在代码或参数中指定具体地址。
+1. **设备连接策略**：
+    *   `power_supply_control.py`：优先自动连接 ITECH IT6722 设备。
+    *   `power_ctrl_cli.py`：默认连接扫描到的**第一个** VISA 资源。如果连接了多个设备，建议通过 `-l` 查看列表，并使用 `-a` 指定具体地址。
 2. 确保电源设备已开启并连接到电脑（USB/串口/网口）。
