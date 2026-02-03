@@ -27,6 +27,22 @@
    uv run power_supply_control.py
    ```
 
+## 🐧 Linux USB 权限配置 (Linux Setup)
+
+如果使用 USB 连接且无法识别设备（`lsusb` 可见但脚本无法列出），通常是权限问题。请按以下步骤添加 `udev` 规则：
+
+1. **创建规则文件** (针对 ITECH IT6722 `2ec7:6700`)：
+   ```bash
+   echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="2ec7", ATTRS{idProduct}=="6700", MODE="0666"' | sudo tee /etc/udev/rules.d/99-itech.rules
+   ```
+
+2. **重载规则并重新插拔设备**：
+   ```bash
+   sudo udevadm control --reload-rules
+   sudo udevadm trigger
+   ```
+   (执行完后请拔掉 USB 再重新插入)
+
 ## 📂 文件说明 (Files)
 
 ### 1. `power_supply_control.py`
