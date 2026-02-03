@@ -15,13 +15,7 @@
 
 本项目推荐使用 [uv](https://github.com/astral-sh/uv) 进行依赖管理和运行。
 
-1. **初始化环境并安装依赖：**
-   ```bash
-   uv venv
-   uv add pyvisa pyvisa-py
-   ```
-
-2. **运行脚本：**
+1. **运行脚本：**
    使用 `uv run` 来执行脚本：
    ```bash
    uv run power_supply_control.py
