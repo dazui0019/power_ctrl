@@ -83,9 +83,49 @@ def list_resources():
     rm = pyvisa.ResourceManager()
     print("扫描到的 VISA 资源:")
     resources = rm.list_resources()
+    
+    formatted_resources = []
+    
+    # 已知厂商 ID (Vendor ID) 映射表
+    KNOWN_VENDORS = {
+        0x2EC7: "ITECH",  # 艾德克斯
+        0x0B21: "Yokogawa",
+        0x0957: "Agilent/Keysight",
+        0x0699: "Tektronix",
+        0x1AB1: "Rigol"
+    }
+
     for res in resources:
-        print(f" - {res}")
-    return resources
+        display_res = res
+        extra_info = ""
+        
+        # 尝试将 USB 资源的 VID/PID 格式化为十六进制显示 (例如: USB0::0x1234::0x5678::...)
+        if res.startswith('USB'):
+            parts = res.split('::')
+            if len(parts) >= 3:
+                try:
+                    # 处理 Vendor ID (parts[1])
+                    vid_val = int(parts[1], 0) # 支持 0x 前缀或纯数字
+                    if not parts[1].lower().startswith('0x'):
+                        parts[1] = f"0x{vid_val:04X}"
+                    
+                    # 尝试识别厂商
+                    if vid_val in KNOWN_VENDORS:
+                        extra_info = f" ({KNOWN_VENDORS[vid_val]})"
+
+                    # 处理 Product ID (parts[2])
+                    if not parts[2].lower().startswith('0x'):
+                        parts[2] = f"0x{int(parts[2], 0):04X}"
+                        
+                    display_res = "::".join(parts)
+                except ValueError:
+                    # 如果转换失败(非数字)，保持原样
+                    pass
+        
+        print(f" - {display_res}{extra_info}")
+        formatted_resources.append(display_res)
+        
+    return formatted_resources
 
 def test_voltage_control_cycle(ps, voltage_1, voltage_2, duration=2):
     """
@@ -197,20 +237,34 @@ if __name__ == "__main__":
         # 模拟一个地址用于演示代码逻辑
         # power_supply_address = 'USB0::0x1234::0x5678::SN123456::INSTR'
     else:
-        # 假设第一个资源是电源（实际使用时请替换为确切的地址 string）
-        power_supply_address = available_resources[0]
+        # 自动搜索 ITECH IT6722 设备 (0x2EC7::0x6700)
+        target_vid = "0x2EC7"
+        target_pid = "0x6700"
+        power_supply_address = None
+
+        print(f"\n正在搜索目标设备 ITECH (VID={target_vid}, PID={target_pid})...")
         
-        print(f"\n尝试连接到: {power_supply_address}")
+        for res in available_resources:
+            # 简单检查资源字符串中是否包含目标 VID 和 PID
+            # 注意：list_resources 返回的字符串已经是格式化过的 (含 0x 前缀)
+            if target_vid.upper() in res.upper() and target_pid.upper() in res.upper():
+                power_supply_address = res
+                print(f"-> 找到目标设备: {res}")
+                break
         
-        ps = PowerSupplyController(power_supply_address)
-        
-        try:
-            ps.connect()
-            
-            # 进入交互式控制模式
-            interactive_control(ps)
-            
-        except Exception as e:
-            print(f"运行过程中出错: {e}")
-        finally:
-            ps.close()
+        if power_supply_address:
+            print(f"\n尝试连接到: {power_supply_address}")
+            ps = PowerSupplyController(power_supply_address)
+            try:
+                ps.connect()
+                # 进入交互式控制模式
+                interactive_control(ps)
+            except Exception as e:
+                print(f"运行过程中出错: {e}")
+            finally:
+                ps.close()
+        else:
+            print(f"错误: 未找到目标设备 (VID={target_vid}, PID={target_pid})")
+            print("可用设备列表:")
+            for res in available_resources:
+                print(f" - {res}")
