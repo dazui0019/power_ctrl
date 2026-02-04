@@ -41,19 +41,30 @@ def main():
     # 1. 确定资源地址
     address = args.address
     if not address:
-        # 自动搜索
-        resources = list_resources(verbose=False)
-        if not resources:
-            print("错误: 未找到任何 VISA 设备。请检查连接。")
+        # 自动搜索 ITECH IT6722 (VID=0x2EC7, PID=0x6700)
+        # 注意: list_resources() 会打印扫描到的资源列表
+        resources = list_resources()
+        
+        target_vid = "0x2EC7"
+        target_pid = "0x6700"
+        
+        for res in resources:
+            # 资源字符串已经过格式化，包含 0xVID 和 0xPID
+            if target_vid in res and target_pid in res:
+                address = res
+                break
+        
+        if not address:
+            print(f"\n错误: 未找到 ITECH IT6722 设备 (VID={target_vid}, PID={target_pid})")
+            print("请确认设备已连接并开启。")
+            # resources 列表已经在 list_resources() 中打印过了，这里不再重复打印
             sys.exit(1)
-        address = resources[0]
-        # print(f"自动选择设备: {address}")
     else:
         # print(f"使用指定设备: {address}")
         pass
     
     # 2. 初始化控制器
-    ps = PowerSupplyController(address, verbose=False)
+    ps = PowerSupplyController(address)
     
     try:
         ps.connect()

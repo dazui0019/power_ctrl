@@ -62,6 +62,11 @@ uv run power_supply_control.py
 ### 2. `power_ctrl_cli.py`
 命令行参数工具。专为自动化脚本或批处理设计，通过命令行参数直接执行操作并退出。
 
+**特点：**
+*   **安全连接**：默认仅自动连接 **ITECH IT6722** 设备。如需控制其他设备，需明确指定地址。
+*   **静默模式**：默认情况下，执行成功仅输出 `Success`（除非指定 `-m` 测量），执行失败输出详细错误。
+*   **详细模式**：使用 `--verbose` 参数可查看详细执行过程。
+
 **使用示例：**
 
 *   **列出所有可用设备：**
@@ -69,9 +74,9 @@ uv run power_supply_control.py
     uv run power_ctrl_cli.py -l
     ```
 
-*   **设置 5V，限流 1A 并打开输出：**
+*   **设置 5V，限流 1A 并打开输出（详细模式）：**
     ```bash
-    uv run power_ctrl_cli.py -v 5.0 -c 1.0 -o on
+    uv run power_ctrl_cli.py -v 5.0 -c 1.0 -o on --verbose
     ```
 
 *   **关闭输出：**
@@ -92,5 +97,5 @@ uv run power_supply_control.py
 ## ⚠️ 注意事项
 1. **设备连接策略**：
     *   `power_supply_control.py`：优先自动连接 ITECH IT6722 设备。
-    *   `power_ctrl_cli.py`：默认连接扫描到的**第一个** VISA 资源。如果连接了多个设备，建议通过 `-l` 查看列表，并使用 `-a` 指定具体地址。
+    *   `power_ctrl_cli.py`：**强制**自动搜索并连接 ITECH IT6722 设备。如果需要控制其他设备，**必须**使用 `-a` 参数指定地址。
 2. 确保电源设备已开启并连接到电脑（USB/串口/网口）。
