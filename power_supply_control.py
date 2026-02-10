@@ -13,17 +13,21 @@ class PowerSupplyController:
         self.verbose = verbose
         self.instrument = None
 
+    def _log(self, message):
+        """内部日志方法"""
+        if self.verbose:
+            print(message)
+
     def connect(self):
         """连接到电源"""
         try:
             self.instrument = self.rm.open_resource(self.address)
-            if self.verbose:
-                print(f"成功连接到设备: {self.address}")
+            self._log(f"成功连接到设备: {self.address}")
             # 查询设备标识
             idn = self.instrument.query('*IDN?')
-            if self.verbose:
-                print(f"设备标识: {idn.strip()}")
+            self._log(f"设备标识: {idn.strip()}")
         except Exception as e:
+            # 连接失败属于严重错误，打印详细信息
             print(f"连接失败: {e}")
             raise
 
@@ -32,26 +36,26 @@ class PowerSupplyController:
         if self.instrument:
             command = f'VOLT {voltage}'
             self.instrument.write(command)
-            print(f"设置电压为: {voltage}V")
+            self._log(f"设置电压为: {voltage}V")
 
     def set_current(self, current):
         """设置电流限制"""
         if self.instrument:
             command = f'CURR {current}'
             self.instrument.write(command)
-            print(f"设置电流为: {current}A")
+            self._log(f"设置电流为: {current}A")
 
     def output_on(self):
         """打开输出"""
         if self.instrument:
             self.instrument.write('OUTP ON')
-            print("输出已打开")
+            self._log("输出已打开")
 
     def output_off(self):
         """关闭输出"""
         if self.instrument:
             self.instrument.write('OUTP OFF')
-            print("输出已关闭")
+            self._log("输出已关闭")
 
     def set_output(self, enabled: bool):
         """
@@ -62,6 +66,20 @@ class PowerSupplyController:
             self.output_on()
         else:
             self.output_off()
+
+    def set_local_mode(self):
+        """
+        切换回本地控制模式 (面板按键解锁)
+        """
+        if self.instrument:
+            try:
+                # 尝试发送 SCPI 命令切换到本地模式
+                self.instrument.write('SYST:LOC')
+                self._log("已发送切换本地模式指令 (SYST:LOC)")
+            except Exception as e:
+                self._log(f"切换本地模式失败: {e}")
+                # 某些设备可能需要使用 GTL (Go To Local)
+                # 但这取决于具体的接口类型 (GPIB/USB/LAN)
 
     def measure_voltage(self):
         """读取实际电压"""
@@ -171,6 +189,7 @@ def interactive_control(ps):
     print("  c <数值>   : 设置电流 (例如: c 1.0)")
     print("  on         : 打开输出")
     print("  off        : 关闭输出")
+    print("  loc        : 切换到本地模式 (解锁面板)")
     print("  m          : 测量当前电压和电流")
     print("  l          : 列出所有可用资源")
     print("  q          : 退出")
@@ -215,6 +234,9 @@ def interactive_control(ps):
                 
             elif cmd == 'off':
                 ps.set_output(False)
+
+            elif cmd in ['loc', 'local']:
+                ps.set_local_mode()
                 
             elif cmd in ['m', 'meas', 'measure']:
                 v = ps.measure_voltage()

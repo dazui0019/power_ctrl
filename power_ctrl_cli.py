@@ -22,17 +22,19 @@ def main():
     parser.add_argument("-o", "--output", choices=['on', 'off'], help="控制输出开关 (on/off)")
     parser.add_argument("-a", "--address", help="指定 VISA 资源地址 (留空则自动搜索第一个)")
     parser.add_argument("-m", "--measure", action="store_true", help="执行完操作后测量并显示当前电压电流")
+    parser.add_argument("--local", action="store_true", help="执行完毕后将设备切换回本地模式 (解锁面板)")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有可用 VISA 资源并退出")
+    parser.add_argument("--verbose", action="store_true", help="显示详细执行过程")
     
     args = parser.parse_args()
 
     # 如果请求列出资源
     if args.list:
-        list_resources()
+        list_resources(verbose=args.verbose)
         sys.exit(0)
 
     # 如果没有传入任何操作参数且不是仅测量，打印帮助
-    if args.voltage is None and args.current is None and args.output is None and not args.measure:
+    if args.voltage is None and args.current is None and args.output is None and not args.measure and not args.local:
         parser.print_help()
         print("\n[提示] 请至少指定一个操作参数。")
         print("例如: python power_ctrl_cli.py -v 5.0 -o on")
@@ -43,7 +45,7 @@ def main():
     if not address:
         # 自动搜索 ITECH IT6722 (VID=0x2EC7, PID=0x6700)
         # 注意: list_resources() 会打印扫描到的资源列表
-        resources = list_resources()
+        resources = list_resources(verbose=args.verbose)
         
         target_vid = "0x2EC7"
         target_pid = "0x6700"
@@ -64,7 +66,7 @@ def main():
         pass
     
     # 2. 初始化控制器
-    ps = PowerSupplyController(address)
+    ps = PowerSupplyController(address, verbose=args.verbose)
     
     try:
         ps.connect()
@@ -85,15 +87,24 @@ def main():
                 ps.set_output(False)
 
         # 4. 如果请求测量，或者刚刚打开了输出，进行一次测量反馈
-        if args.measure or args.output == 'on':
+        if args.measure or (args.output == 'on' and args.verbose):
             # 给一点时间让电源响应（特别是刚打开输出时）
             time.sleep(0.5) 
             v = ps.measure_voltage()
             c = ps.measure_current()
             print(f"当前状态: {v:.4f} V, {c:.4f} A")
+        elif not args.verbose:
+            print("Success")
+
+        # 5. 如果需要切换回本地模式
+        if args.local:
+            ps.set_local_mode()
 
     except Exception as e:
         print(f"执行出错: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
         sys.exit(1)
     finally:
         ps.close()
