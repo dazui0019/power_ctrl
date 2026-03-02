@@ -21,6 +21,35 @@
    uv run power_supply_control.py
    ```
 
+## 📦 打包为 EXE (PyInstaller)
+
+在项目根目录执行以下命令：
+
+*   **单文件模式（分发方便）：**
+    ```bash
+    uv run pyinstaller --noconfirm --clean --onefile --name power_ctrl_cli power_ctrl_cli.py
+    ```
+    产物：`dist/power_ctrl_cli.exe`
+
+*   **目录模式（启动更快，推荐自动化场景）：**
+    ```bash
+    uv run pyinstaller --noconfirm --clean --onedir --name power_ctrl_cli_dir power_ctrl_cli.py
+    ```
+    产物：`dist/power_ctrl_cli_dir/power_ctrl_cli_dir.exe`
+
+*   **打包后快速验证：**
+    ```bash
+    .\dist\power_ctrl_cli.exe -l
+    .\dist\power_ctrl_cli.exe -t
+    ```
+    或（目录模式）：
+    ```bash
+    .\dist\power_ctrl_cli_dir\power_ctrl_cli_dir.exe -l
+    .\dist\power_ctrl_cli_dir\power_ctrl_cli_dir.exe -t
+    ```
+
+> 提示：如果目标电脑运行时出现 VISA 相关错误，请安装 NI-VISA 驱动；或确认 `pyvisa-py` 后端环境可用。
+
 ## 🐧 Linux USB 权限配置 (Linux Setup)
 
 如果使用 USB 连接且无法识别设备（`lsusb` 可见但脚本无法列出），通常是权限问题。请按以下步骤添加 `udev` 规则：
