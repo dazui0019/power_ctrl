@@ -66,6 +66,7 @@ uv run power_supply_control.py
 **特点：**
 *   **安全连接**：默认仅自动连接 **ITECH IT6722** 设备。如需控制其他设备，需明确指定地址。
 *   **静默模式**：默认情况下，执行成功仅输出 `Success`（除非指定 `-m` 测量），执行失败输出详细错误。
+*   **通信测试命令**：`--comm-test` 仅输出测试结果，成功输出 `Success`，失败输出 `failed`。
 *   **本地模式切换**：使用 `--local` 参数可在操作完成后自动解锁电源面板按键（退出 RMT 模式）。
 *   **详细模式**：使用 `--verbose` 参数可查看详细执行过程。
 
@@ -75,6 +76,7 @@ uv run power_supply_control.py
     ```bash
     uv run power_ctrl_cli.py -l
     ```
+    输出可用 VISA 资源地址列表。
 
 *   **设置 5V，限流 1A 并打开输出（详细模式）：**
     ```bash
@@ -95,6 +97,12 @@ uv run power_supply_control.py
     ```bash
     uv run power_ctrl_cli.py -m
     ```
+
+*   **仅测试与设备通信（查询设备标识）：**
+    ```bash
+    uv run power_ctrl_cli.py --comm-test
+    ```
+    输出结果仅为 `Success` 或 `failed`。
 
 *   **查看帮助：**
     ```bash

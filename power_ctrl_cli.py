@@ -13,7 +13,7 @@ except ImportError:
 def main():
     parser = argparse.ArgumentParser(
         description="电源控制命令行工具 (CLI)",
-        epilog="示例: python power_ctrl_cli.py -v 12.0 -c 2.0 -o on"
+        epilog="示例: python power_ctrl_cli.py -v 12.0 -c 2.0 -o on / python power_ctrl_cli.py --comm-test"
     )
     
     # 定义命令行参数
@@ -22,6 +22,7 @@ def main():
     parser.add_argument("-o", "--output", choices=['on', 'off'], help="控制输出开关 (on/off)")
     parser.add_argument("-a", "--address", help="指定 VISA 资源地址 (留空则自动搜索第一个)")
     parser.add_argument("-m", "--measure", action="store_true", help="执行完操作后测量并显示当前电压电流")
+    parser.add_argument("-t", "--comm-test", action="store_true", help="仅测试与设备通信 (查询 *IDN? 后退出)")
     parser.add_argument("--local", action="store_true", help="执行完毕后将设备切换回本地模式 (解锁面板)")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有可用 VISA 资源并退出")
     parser.add_argument("--verbose", action="store_true", help="显示详细执行过程")
@@ -30,11 +31,18 @@ def main():
 
     # 如果请求列出资源
     if args.list:
-        list_resources(verbose=args.verbose)
+        resources = list_resources(verbose=args.verbose)
+        if not args.verbose:
+            if resources:
+                print("可用 VISA 资源:")
+                for res in resources:
+                    print(f" - {res}")
+            else:
+                print("未找到可用的 VISA 资源。")
         sys.exit(0)
 
     # 如果没有传入任何操作参数且不是仅测量，打印帮助
-    if args.voltage is None and args.current is None and args.output is None and not args.measure and not args.local:
+    if args.voltage is None and args.current is None and args.output is None and not args.measure and not args.local and not args.comm_test:
         parser.print_help()
         print("\n[提示] 请至少指定一个操作参数。")
         print("例如: python power_ctrl_cli.py -v 5.0 -o on")
@@ -45,7 +53,7 @@ def main():
     if not address:
         # 自动搜索 ITECH IT6722 (VID=0x2EC7, PID=0x6700)
         # 注意: list_resources() 会打印扫描到的资源列表
-        resources = list_resources(verbose=args.verbose)
+        resources = list_resources(verbose=(args.verbose and not args.comm_test))
         
         target_vid = "0x2EC7"
         target_pid = "0x6700"
@@ -57,21 +65,30 @@ def main():
                 break
         
         if not address:
-            print(f"\n错误: 未找到 ITECH IT6722 设备 (VID={target_vid}, PID={target_pid})")
-            print("请确认设备已连接并开启。")
-            # resources 列表已经在 list_resources() 中打印过了，这里不再重复打印
+            if args.comm_test:
+                print("failed")
+            else:
+                print(f"\n错误: 未找到 ITECH IT6722 设备 (VID={target_vid}, PID={target_pid})")
+                print("请确认设备已连接并开启。")
+                # resources 列表已经在 list_resources() 中打印过了，这里不再重复打印
             sys.exit(1)
     else:
         # print(f"使用指定设备: {address}")
         pass
     
     # 2. 初始化控制器
-    ps = PowerSupplyController(address, verbose=args.verbose)
+    ps = PowerSupplyController(address, verbose=(args.verbose and not args.comm_test))
     
     try:
         ps.connect()
+
+        # 3. 通信测试：连接成功后再做一次 *IDN? 查询确认链路可用
+        if args.comm_test:
+            ps.instrument.query('*IDN?')
+            print("Success")
+            return
         
-        # 3. 按顺序执行操作
+        # 4. 按顺序执行操作
         # 建议顺序：先设置参数，再开输出
         
         if args.voltage is not None:
@@ -86,7 +103,7 @@ def main():
             else:
                 ps.set_output(False)
 
-        # 4. 如果请求测量，或者刚刚打开了输出，进行一次测量反馈
+        # 5. 如果请求测量，或者刚刚打开了输出，进行一次测量反馈
         if args.measure or (args.output == 'on' and args.verbose):
             # 给一点时间让电源响应（特别是刚打开输出时）
             time.sleep(0.5) 
@@ -96,15 +113,18 @@ def main():
         elif not args.verbose:
             print("Success")
 
-        # 5. 如果需要切换回本地模式
+        # 6. 如果需要切换回本地模式
         if args.local:
             ps.set_local_mode()
 
     except Exception as e:
-        print(f"执行出错: {e}")
-        if args.verbose:
-            import traceback
-            traceback.print_exc()
+        if args.comm_test:
+            print("failed")
+        else:
+            print(f"执行出错: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
         sys.exit(1)
     finally:
         ps.close()

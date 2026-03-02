@@ -27,8 +27,8 @@ class PowerSupplyController:
             idn = self.instrument.query('*IDN?')
             self._log(f"设备标识: {idn.strip()}")
         except Exception as e:
-            # 连接失败属于严重错误，打印详细信息
-            print(f"连接失败: {e}")
+            # 失败信息交给调用方统一处理；verbose 时仅记录调试日志
+            self._log(f"Connect failed: {e}")
             raise
 
     def set_voltage(self, voltage):
