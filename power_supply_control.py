@@ -18,14 +18,18 @@ class PowerSupplyController:
         if self.verbose:
             print(message)
 
-    def connect(self):
-        """连接到电源"""
+    def connect(self, check_idn=True):
+        """
+        连接到电源
+        :param check_idn: 是否在连接后立即查询设备标识 (*IDN?)
+        """
         try:
             self.instrument = self.rm.open_resource(self.address)
             self._log(f"成功连接到设备: {self.address}")
-            # 查询设备标识
-            idn = self.instrument.query('*IDN?')
-            self._log(f"设备标识: {idn.strip()}")
+            if check_idn:
+                # 查询设备标识
+                idn = self.instrument.query('*IDN?')
+                self._log(f"设备标识: {idn.strip()}")
         except Exception as e:
             # 失败信息交给调用方统一处理；verbose 时仅记录调试日志
             self._log(f"Connect failed: {e}")

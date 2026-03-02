@@ -67,6 +67,7 @@ uv run power_supply_control.py
 *   **安全连接**：默认仅自动连接 **ITECH IT6722** 设备。如需控制其他设备，需明确指定地址。
 *   **静默模式**：默认情况下，执行成功仅输出 `Success`（除非指定 `-m` 测量），执行失败输出详细错误。
 *   **通信测试命令**：`--comm-test` 仅输出测试结果，成功输出 `Success`，失败输出 `failed`。
+*   **可配置测量等待**：`--settle-time` 可设置测量前等待时间（秒），默认 `0` 以减少 step 执行耗时；仅在触发测量时生效（`-m` 或 `-o on --verbose`）。
 *   **本地模式切换**：使用 `--local` 参数可在操作完成后自动解锁电源面板按键（退出 RMT 模式）。
 *   **详细模式**：使用 `--verbose` 参数可查看详细执行过程。
 
@@ -96,6 +97,11 @@ uv run power_supply_control.py
 *   **仅测量当前状态：**
     ```bash
     uv run power_ctrl_cli.py -m
+    ```
+
+*   **输出后等待 0.5s 再测量（提高读数稳定性）：**
+    ```bash
+    uv run power_ctrl_cli.py -o on -m --settle-time 0.5
     ```
 
 *   **仅测试与设备通信（查询设备标识）：**

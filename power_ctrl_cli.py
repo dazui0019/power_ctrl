@@ -23,11 +23,14 @@ def main():
     parser.add_argument("-a", "--address", help="指定 VISA 资源地址 (留空则自动搜索第一个)")
     parser.add_argument("-m", "--measure", action="store_true", help="执行完操作后测量并显示当前电压电流")
     parser.add_argument("-t", "--comm-test", action="store_true", help="仅测试与设备通信 (查询 *IDN? 后退出)")
+    parser.add_argument("--settle-time", type=float, default=0.0, help="测量前等待时间 (秒，默认 0)")
     parser.add_argument("--local", action="store_true", help="执行完毕后将设备切换回本地模式 (解锁面板)")
     parser.add_argument("-l", "--list", action="store_true", help="列出所有可用 VISA 资源并退出")
     parser.add_argument("--verbose", action="store_true", help="显示详细执行过程")
     
     args = parser.parse_args()
+    if args.settle_time < 0:
+        parser.error("--settle-time 不能为负数")
 
     # 如果请求列出资源
     if args.list:
@@ -80,7 +83,7 @@ def main():
     ps = PowerSupplyController(address, verbose=(args.verbose and not args.comm_test))
     
     try:
-        ps.connect()
+        ps.connect(check_idn=False)
 
         # 3. 通信测试：连接成功后再做一次 *IDN? 查询确认链路可用
         if args.comm_test:
@@ -105,8 +108,9 @@ def main():
 
         # 5. 如果请求测量，或者刚刚打开了输出，进行一次测量反馈
         if args.measure or (args.output == 'on' and args.verbose):
-            # 给一点时间让电源响应（特别是刚打开输出时）
-            time.sleep(0.5) 
+            if args.settle_time > 0:
+                # 给设备时间稳定输出，默认不等待以缩短 step 执行时长
+                time.sleep(args.settle_time)
             v = ps.measure_voltage()
             c = ps.measure_current()
             print(f"当前状态: {v:.4f} V, {c:.4f} A")
