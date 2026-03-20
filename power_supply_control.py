@@ -98,28 +98,31 @@ class PowerSupplyController:
             f"间隔 {self._format_duration(step_interval)}"
         )
         self.set_voltage(start_voltage)
+        current_voltage = start_voltage
 
         if abs(start_voltage - target_voltage) < 1e-12:
             self._log(f"斜坡调压完成，当前电压设为: {target_voltage:.4f}V")
             return
 
         direction = 1 if target_voltage > start_voltage else -1
-        current_voltage = start_voltage
+        try:
+            while True:
+                next_voltage = current_voltage + direction * step_voltage
+                if direction > 0 and next_voltage >= target_voltage:
+                    next_voltage = target_voltage
+                elif direction < 0 and next_voltage <= target_voltage:
+                    next_voltage = target_voltage
 
-        while True:
-            next_voltage = current_voltage + direction * step_voltage
-            if direction > 0 and next_voltage >= target_voltage:
-                next_voltage = target_voltage
-            elif direction < 0 and next_voltage <= target_voltage:
-                next_voltage = target_voltage
+                if step_interval > 0:
+                    time.sleep(step_interval)
+                self.set_voltage(next_voltage)
+                current_voltage = next_voltage
 
-            if step_interval > 0:
-                time.sleep(step_interval)
-            self.set_voltage(next_voltage)
-            current_voltage = next_voltage
-
-            if abs(current_voltage - target_voltage) < 1e-12:
-                break
+                if abs(current_voltage - target_voltage) < 1e-12:
+                    break
+        except KeyboardInterrupt:
+            self._log(f"斜坡调压被中断，当前电压停留在: {current_voltage:.4f}V")
+            raise
 
         self._log(f"斜坡调压完成，当前电压设为: {target_voltage:.4f}V")
 
@@ -136,17 +139,26 @@ class PowerSupplyController:
         if on_duration < 0 or off_duration < 0:
             raise ValueError("on_duration 和 off_duration 不能为负数")
 
-        for index in range(cycles):
-            cycle_no = index + 1
-            self._log(f"开始第 {cycle_no}/{cycles} 次上下电循环")
-            self.set_output(True)
-            if on_duration > 0:
-                self._log(f"  上电保持 {self._format_duration(on_duration)}")
-                time.sleep(on_duration)
-            self.set_output(False)
-            if off_duration > 0 and index < cycles - 1:
-                self._log(f"  断电保持 {self._format_duration(off_duration)}")
-                time.sleep(off_duration)
+        current_output = False
+        cycle_no = 0
+        try:
+            for index in range(cycles):
+                cycle_no = index + 1
+                self._log(f"开始第 {cycle_no}/{cycles} 次上下电循环")
+                self.set_output(True)
+                current_output = True
+                if on_duration > 0:
+                    self._log(f"  上电保持 {self._format_duration(on_duration)}")
+                    time.sleep(on_duration)
+                self.set_output(False)
+                current_output = False
+                if off_duration > 0 and index < cycles - 1:
+                    self._log(f"  断电保持 {self._format_duration(off_duration)}")
+                    time.sleep(off_duration)
+        except KeyboardInterrupt:
+            state_text = "打开" if current_output else "关闭"
+            self._log(f"周期上下电在第 {cycle_no}/{cycles} 次循环中被中断，当前输出保持{state_text}")
+            raise
 
         self.set_output(final_output)
         final_state = "打开" if final_output else "关闭"

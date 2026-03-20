@@ -193,6 +193,15 @@ def main():
         if args.local:
             ps.set_local_mode()
 
+    except KeyboardInterrupt:
+        if not args.comm_test:
+            print("\n操作已被 Ctrl+C 中断。")
+            if args.local:
+                try:
+                    ps.set_local_mode()
+                except Exception:
+                    pass
+        sys.exit(130)
     except Exception as e:
         if args.comm_test:
             print("failed")

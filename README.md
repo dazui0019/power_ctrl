@@ -101,6 +101,7 @@ uv run power_supply_control.py
 *   **可配置测量等待**：`--settle-time` 可设置测量前等待时间（秒），默认 `0` 以减少 step 执行耗时；仅在触发测量时生效（`-m` 或 `-o on --verbose`）。
 *   **电压斜坡调节**：使用 `--ramp-start-voltage` 指定起始电压，`-v/--voltage` 指定目标电压，并通过 `--ramp-step-voltage` 和 `--ramp-step-time` 控制每步电压变化量与时间间隔。
 *   **周期上下电**：使用 `--cycle-count`、`--cycle-on-time` 和 `--cycle-off-time` 控制输出按周期重复上电/断电，时间单位默认为毫秒；`--cycle-end-output` 可指定结束时保持 `on` 或 `off`，默认 `off`。
+*   **支持 Ctrl+C 中断**：在长时间的斜坡调压或周期上下电过程中可按 `Ctrl+C` 终止执行，脚本会优雅退出并关闭连接。
 *   **本地模式切换**：使用 `--local` 参数可在操作完成后自动解锁电源面板按键（退出 RMT 模式）。
 *   **详细模式**：使用 `--verbose` 参数可查看详细执行过程。
 
