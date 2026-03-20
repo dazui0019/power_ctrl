@@ -18,6 +18,13 @@ class PowerSupplyController:
         if self.verbose:
             print(message)
 
+    @staticmethod
+    def _format_duration(seconds):
+        """格式化时长，便于日志中直观看到 ms/秒。"""
+        if seconds < 1:
+            return f"{seconds * 1000:.0f} ms"
+        return f"{seconds:.3f} 秒"
+
     def connect(self, check_idn=True):
         """
         连接到电源
@@ -70,6 +77,35 @@ class PowerSupplyController:
             self.output_on()
         else:
             self.output_off()
+
+    def cycle_output(self, cycles, on_duration=0.0, off_duration=0.0, final_output=False):
+        """
+        按指定次数执行周期上下电，并在结束后切换到指定输出状态。
+        :param cycles: 循环次数，必须大于 0
+        :param on_duration: 每次上电保持时长（秒）
+        :param off_duration: 每次断电保持时长（秒，仅在非最后一次循环后等待）
+        :param final_output: 循环完成后的最终输出状态，True 为打开，False 为关闭
+        """
+        if cycles < 1:
+            raise ValueError("cycles 必须大于 0")
+        if on_duration < 0 or off_duration < 0:
+            raise ValueError("on_duration 和 off_duration 不能为负数")
+
+        for index in range(cycles):
+            cycle_no = index + 1
+            self._log(f"开始第 {cycle_no}/{cycles} 次上下电循环")
+            self.set_output(True)
+            if on_duration > 0:
+                self._log(f"  上电保持 {self._format_duration(on_duration)}")
+                time.sleep(on_duration)
+            self.set_output(False)
+            if off_duration > 0 and index < cycles - 1:
+                self._log(f"  断电保持 {self._format_duration(off_duration)}")
+                time.sleep(off_duration)
+
+        self.set_output(final_output)
+        final_state = "打开" if final_output else "关闭"
+        self._log(f"周期上下电完成，当前输出已{final_state}")
 
     def set_local_mode(self):
         """
@@ -193,6 +229,7 @@ def interactive_control(ps):
     print("  c <数值>   : 设置电流 (例如: c 1.0)")
     print("  on         : 打开输出")
     print("  off        : 关闭输出")
+    print("  cycle n on off [end] : 周期上下电 n 次，上电 on 毫秒，断电 off 毫秒，end 为 on/off")
     print("  loc        : 切换到本地模式 (解锁面板)")
     print("  m          : 测量当前电压和电流")
     print("  l          : 列出所有可用资源")
@@ -238,6 +275,23 @@ def interactive_control(ps):
                 
             elif cmd == 'off':
                 ps.set_output(False)
+
+            elif cmd == 'cycle':
+                if len(parts) in [4, 5]:
+                    try:
+                        cycles = int(parts[1])
+                        on_duration = float(parts[2]) / 1000.0
+                        off_duration = float(parts[3]) / 1000.0
+                        final_output = False
+                        if len(parts) == 5:
+                            if parts[4] not in ['on', 'off']:
+                                raise ValueError
+                            final_output = (parts[4] == 'on')
+                        ps.cycle_output(cycles, on_duration, off_duration, final_output=final_output)
+                    except ValueError:
+                        print("错误: 用法为 cycle <次数> <上电毫秒> <断电毫秒> [on|off]")
+                else:
+                    print("错误: 用法为 cycle <次数> <上电毫秒> <断电毫秒> [on|off]")
 
             elif cmd in ['loc', 'local']:
                 ps.set_local_mode()

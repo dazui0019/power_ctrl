@@ -84,6 +84,7 @@ uv run power_supply_control.py
 *   `v <数值>` : 设置电压 (例如 `v 12.0`)
 *   `c <数值>` : 设置电流限制 (例如 `c 2.0`)
 *   `on` / `off`: 打开或关闭输出
+*   `cycle <次数> <上电毫秒> <断电毫秒> [on|off]` : 按指定次数执行周期上下电，并可指定结束时输出状态
 *   `loc`      : 切换到本地模式 (解锁前面板按键)
 *   `m` : 测量当前电压和电流
 *   `l` : 列出所有可用资源
@@ -97,6 +98,7 @@ uv run power_supply_control.py
 *   **静默模式**：默认情况下，执行成功仅输出 `Success`（除非指定 `-m` 测量），执行失败输出详细错误。
 *   **通信测试命令**：`--comm-test` 仅输出测试结果，成功输出 `Success`，失败输出 `failed`。
 *   **可配置测量等待**：`--settle-time` 可设置测量前等待时间（秒），默认 `0` 以减少 step 执行耗时；仅在触发测量时生效（`-m` 或 `-o on --verbose`）。
+*   **周期上下电**：使用 `--cycle-count`、`--cycle-on-time` 和 `--cycle-off-time` 控制输出按周期重复上电/断电，时间单位默认为毫秒；`--cycle-end-output` 可指定结束时保持 `on` 或 `off`，默认 `off`。
 *   **本地模式切换**：使用 `--local` 参数可在操作完成后自动解锁电源面板按键（退出 RMT 模式）。
 *   **详细模式**：使用 `--verbose` 参数可查看详细执行过程。
 
@@ -132,6 +134,18 @@ uv run power_supply_control.py
     ```bash
     uv run power_ctrl_cli.py -o on -m --settle-time 0.5
     ```
+
+*   **周期上下电 10 次，每次上电 5000ms、断电 2000ms：**
+    ```bash
+    uv run power_ctrl_cli.py -v 12.0 -c 2.0 --cycle-count 10 --cycle-on-time 5000 --cycle-off-time 2000 --verbose
+    ```
+    > 说明：最后一次断电后不会额外等待 `--cycle-off-time`，脚本会直接结束并保持输出关闭。
+
+*   **周期上下电结束后保持输出打开：**
+    ```bash
+    uv run power_ctrl_cli.py -v 12.0 -c 2.0 --cycle-count 10 --cycle-on-time 5000 --cycle-off-time 2000 --cycle-end-output on --verbose
+    ```
+    > 说明：脚本会先完成完整的上下电循环，再根据 `--cycle-end-output` 设置最终输出状态。
 
 *   **仅测试与设备通信（查询设备标识）：**
     ```bash
