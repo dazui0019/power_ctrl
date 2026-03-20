@@ -84,6 +84,7 @@ uv run power_supply_control.py
 *   `v <数值>` : 设置电压 (例如 `v 12.0`)
 *   `c <数值>` : 设置电流限制 (例如 `c 2.0`)
 *   `on` / `off`: 打开或关闭输出
+*   `ramp <起始V> <目标V> [步进V] [间隔毫秒]` : 以斜坡方式逐步调整电压
 *   `cycle <次数> <上电毫秒> <断电毫秒> [on|off]` : 按指定次数执行周期上下电，并可指定结束时输出状态
 *   `loc`      : 切换到本地模式 (解锁前面板按键)
 *   `m` : 测量当前电压和电流
@@ -98,6 +99,7 @@ uv run power_supply_control.py
 *   **静默模式**：默认情况下，执行成功仅输出 `Success`（除非指定 `-m` 测量），执行失败输出详细错误。
 *   **通信测试命令**：`--comm-test` 仅输出测试结果，成功输出 `Success`，失败输出 `failed`。
 *   **可配置测量等待**：`--settle-time` 可设置测量前等待时间（秒），默认 `0` 以减少 step 执行耗时；仅在触发测量时生效（`-m` 或 `-o on --verbose`）。
+*   **电压斜坡调节**：使用 `--ramp-start-voltage` 指定起始电压，`-v/--voltage` 指定目标电压，并通过 `--ramp-step-voltage` 和 `--ramp-step-time` 控制每步电压变化量与时间间隔。
 *   **周期上下电**：使用 `--cycle-count`、`--cycle-on-time` 和 `--cycle-off-time` 控制输出按周期重复上电/断电，时间单位默认为毫秒；`--cycle-end-output` 可指定结束时保持 `on` 或 `off`，默认 `off`。
 *   **本地模式切换**：使用 `--local` 参数可在操作完成后自动解锁电源面板按键（退出 RMT 模式）。
 *   **详细模式**：使用 `--verbose` 参数可查看详细执行过程。
@@ -134,6 +136,12 @@ uv run power_supply_control.py
     ```bash
     uv run power_ctrl_cli.py -o on -m --settle-time 0.5
     ```
+
+*   **从 26V 开始，每 1 秒下降 0.1V，直到 12V：**
+    ```bash
+    uv run power_ctrl_cli.py -c 2.0 -o on -v 12.0 --ramp-start-voltage 26.0 --ramp-step-voltage 0.1 --ramp-step-time 1000 --verbose
+    ```
+    > 说明：使用斜坡模式时，`-v/--voltage` 表示目标电压；如果同时传入 `-o on`，脚本会先打开输出再开始调压。
 
 *   **周期上下电 10 次，每次上电 5000ms、断电 2000ms：**
     ```bash

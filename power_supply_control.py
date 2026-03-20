@@ -78,6 +78,51 @@ class PowerSupplyController:
         else:
             self.output_off()
 
+    def ramp_voltage(self, start_voltage, target_voltage, step_voltage=0.1, step_interval=1.0):
+        """
+        按固定步进与时间间隔逐步调整电压，可用于升压或降压。
+        :param start_voltage: 起始电压（V）
+        :param target_voltage: 目标电压（V）
+        :param step_voltage: 每步调整的电压值（V），必须大于 0
+        :param step_interval: 每步之间的等待时间（秒）
+        """
+        if step_voltage <= 0:
+            raise ValueError("step_voltage 必须大于 0")
+        if step_interval < 0:
+            raise ValueError("step_interval 不能为负数")
+
+        self._log(
+            "开始斜坡调压: "
+            f"{start_voltage:.4f}V -> {target_voltage:.4f}V, "
+            f"步进 {step_voltage:.4f}V, "
+            f"间隔 {self._format_duration(step_interval)}"
+        )
+        self.set_voltage(start_voltage)
+
+        if abs(start_voltage - target_voltage) < 1e-12:
+            self._log(f"斜坡调压完成，当前电压设为: {target_voltage:.4f}V")
+            return
+
+        direction = 1 if target_voltage > start_voltage else -1
+        current_voltage = start_voltage
+
+        while True:
+            next_voltage = current_voltage + direction * step_voltage
+            if direction > 0 and next_voltage >= target_voltage:
+                next_voltage = target_voltage
+            elif direction < 0 and next_voltage <= target_voltage:
+                next_voltage = target_voltage
+
+            if step_interval > 0:
+                time.sleep(step_interval)
+            self.set_voltage(next_voltage)
+            current_voltage = next_voltage
+
+            if abs(current_voltage - target_voltage) < 1e-12:
+                break
+
+        self._log(f"斜坡调压完成，当前电压设为: {target_voltage:.4f}V")
+
     def cycle_output(self, cycles, on_duration=0.0, off_duration=0.0, final_output=False):
         """
         按指定次数执行周期上下电，并在结束后切换到指定输出状态。
@@ -229,6 +274,7 @@ def interactive_control(ps):
     print("  c <数值>   : 设置电流 (例如: c 1.0)")
     print("  on         : 打开输出")
     print("  off        : 关闭输出")
+    print("  ramp s t [step] [ms] : 从 s V 斜坡调到 t V，可选步进 step V，间隔 ms 毫秒")
     print("  cycle n on off [end] : 周期上下电 n 次，上电 on 毫秒，断电 off 毫秒，end 为 on/off")
     print("  loc        : 切换到本地模式 (解锁面板)")
     print("  m          : 测量当前电压和电流")
@@ -275,6 +321,24 @@ def interactive_control(ps):
                 
             elif cmd == 'off':
                 ps.set_output(False)
+
+            elif cmd == 'ramp':
+                if 3 <= len(parts) <= 5:
+                    try:
+                        start_voltage = float(parts[1])
+                        target_voltage = float(parts[2])
+                        step_voltage = float(parts[3]) if len(parts) >= 4 else 0.1
+                        step_interval = (float(parts[4]) / 1000.0) if len(parts) == 5 else 1.0
+                        ps.ramp_voltage(
+                            start_voltage,
+                            target_voltage,
+                            step_voltage=step_voltage,
+                            step_interval=step_interval,
+                        )
+                    except ValueError:
+                        print("错误: 用法为 ramp <起始V> <目标V> [步进V] [间隔毫秒]")
+                else:
+                    print("错误: 用法为 ramp <起始V> <目标V> [步进V] [间隔毫秒]")
 
             elif cmd == 'cycle':
                 if len(parts) in [4, 5]:

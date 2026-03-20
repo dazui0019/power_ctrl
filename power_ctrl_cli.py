@@ -15,13 +15,16 @@ def main():
         description="电源控制命令行工具 (CLI)",
         epilog=(
             "示例: python power_ctrl_cli.py -v 12.0 -c 2.0 -o on / "
-            "python power_ctrl_cli.py --cycle-count 5 --cycle-on-time 3000 "
-            "--cycle-off-time 2000 --cycle-end-output on"
+            "python power_ctrl_cli.py -v 12.0 --ramp-start-voltage 26.0 "
+            "--ramp-step-voltage 0.1 --ramp-step-time 1000"
         )
     )
     
     # 定义命令行参数
     parser.add_argument("-v", "--voltage", type=float, help="设置电压 (V)")
+    parser.add_argument("--ramp-start-voltage", type=float, help="斜坡调压时的起始电压 (V)")
+    parser.add_argument("--ramp-step-voltage", type=float, help="斜坡调压每步变化电压 (V，默认 0.1)")
+    parser.add_argument("--ramp-step-time", type=float, help="斜坡调压每步等待时间 (毫秒，默认 1000)")
     parser.add_argument("-c", "--current", type=float, help="设置电流限制 (A)")
     parser.add_argument("-o", "--output", choices=['on', 'off'], help="控制输出开关 (on/off)")
     parser.add_argument("-a", "--address", help="指定 VISA 资源地址 (留空则自动搜索第一个)")
@@ -42,8 +45,19 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="显示详细执行过程")
     
     args = parser.parse_args()
+    ramp_step_voltage = args.ramp_step_voltage if args.ramp_step_voltage is not None else 0.1
+    ramp_step_time = args.ramp_step_time if args.ramp_step_time is not None else 1000.0
+
     if args.settle_time < 0:
         parser.error("--settle-time 不能为负数")
+    if args.ramp_start_voltage is None and (args.ramp_step_voltage is not None or args.ramp_step_time is not None):
+        parser.error("使用 --ramp-step-voltage 或 --ramp-step-time 时必须同时指定 --ramp-start-voltage")
+    if args.ramp_start_voltage is not None and args.voltage is None:
+        parser.error("使用 --ramp-start-voltage 时必须同时指定 -v/--voltage 作为目标电压")
+    if ramp_step_voltage <= 0:
+        parser.error("--ramp-step-voltage 必须大于 0")
+    if ramp_step_time < 0:
+        parser.error("--ramp-step-time 不能为负数")
     if args.cycle_count is not None and args.cycle_count < 1:
         parser.error("--cycle-count 必须大于 0")
     if args.cycle_on_time < 0:
@@ -127,11 +141,21 @@ def main():
         # 4. 按顺序执行操作
         # 建议顺序：先设置参数，再开输出
         
-        if args.voltage is not None:
-            ps.set_voltage(args.voltage)
-            
         if args.current is not None:
             ps.set_current(args.current)
+
+        if args.ramp_start_voltage is not None and args.output == 'on':
+            ps.set_output(True)
+
+        if args.ramp_start_voltage is not None:
+            ps.ramp_voltage(
+                args.ramp_start_voltage,
+                args.voltage,
+                step_voltage=ramp_step_voltage,
+                step_interval=ramp_step_time / 1000.0,
+            )
+        elif args.voltage is not None:
+            ps.set_voltage(args.voltage)
             
         if args.cycle_count is not None:
             ps.cycle_output(
@@ -140,7 +164,7 @@ def main():
                 args.cycle_off_time / 1000.0,
                 final_output=(args.cycle_end_output == 'on'),
             )
-        elif args.output is not None:
+        elif args.output is not None and not (args.ramp_start_voltage is not None and args.output == 'on'):
             if args.output == 'on':
                 ps.set_output(True)
             else:
